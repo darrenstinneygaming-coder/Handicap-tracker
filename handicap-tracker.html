@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golf Handicap Tracker</title>
+</head>
+<body style="margin: 0; padding: 24px 16px; background: #FBF8F0; min-height: 100vh;">
+<div id="app" style="max-width: 640px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #23281E;">
+  <style>
+    #app * { box-sizing: border-box; }
+    #app .ledger { font-family: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #app .display { font-family: Georgia, 'Times New Roman', serif; }
+    #app button { cursor: pointer; }
+    #app input, #app select {
+      font-family: inherit;
+      font-size: 15px;
+      padding: 9px 10px;
+      border: 1px solid #C9BFA5;
+      border-radius: 6px;
+      background: #FBF8F0;
+      color: #23281E;
+      width: 100%;
+    }
+    #app input:focus, #app select:focus {
+      outline: none;
+      border-color: #2D6A4F;
+      box-shadow: 0 0 0 2px rgba(45,106,79,0.15);
+    }
+    #app .btn-primary {
+      background: #1B4332;
+      color: #F7F3E8;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      width: 100%;
+    }
+    #app .btn-primary:hover { background: #2D6A4F; }
+    #app .btn-primary:disabled { background: #A9A9A0; cursor: not-allowed; }
+    #app .row-del {
+      background: none;
+      border: none;
+      color: #A34A3D;
+      font-size: 13px;
+      padding: 2px 6px;
+    }
+    #app .row-del:hover { text-decoration: underline; }
+    #app table { width: 100%; border-collapse: collapse; }
+    #app th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6B6A5E; padding: 6px 8px; border-bottom: 1px solid #D8D2BE; }
+    #app td { padding: 8px 8px; font-size: 14px; border-bottom: 1px solid #EAE5D5; }
+    #app .field-label { font-size: 12px; color: #6B6A5E; margin-bottom: 4px; display: block; }
+  </style>
+
+  <div style="background: #F7F3E8; border: 1px solid #D8D2BE; border-radius: 12px; padding: 24px 24px 20px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+      <div style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid #1B4332; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #FBF8F0; flex-shrink: 0;">
+        <div id="hcp-value" class="ledger display" style="font-size: 30px; font-weight: 700; color: #1B4332; line-height: 1;">54.0</div>
+        <div style="font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6A5E; margin-top: 3px;">index</div>
+      </div>
+      <div style="flex: 1; min-width: 180px;">
+        <div class="display" style="font-size: 20px; font-weight: 700; color: #1B4332;">Handicap tracker</div>
+        <div id="hcp-status" style="font-size: 13px; color: #6B6A5E; margin-top: 4px; line-height: 1.5;">Starting index is 54.0. Log a few rounds and it'll start moving.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #FBF8F0; border: 1px solid #D8D2BE; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <div class="display" style="font-size: 16px; font-weight: 700; margin-bottom: 14px; color: #1B4332;">Log a round</div>
+    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+        <div>
+          <label class="field-label" for="course-input">Course</label>
+          <input id="course-input" type="text" placeholder="e.g. Pine Hollow" />
+        </div>
+        <div>
+          <label class="field-label" for="holes-input">Holes</label>
+          <select id="holes-input">
+            <option value="18">18</option>
+            <option value="9">9</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" for="score-input">Score</label>
+        <input id="score-input" type="number" min="1" step="1" placeholder="e.g. 96" />
+      </div>
+      <div id="form-error" style="font-size: 13px; color: #A34A3D; display: none;"></div>
+      <button class="btn-primary" id="submit-btn">Log round</button>
+    </div>
+  </div>
+
+  <div style="background: #FBF8F0; border: 1px solid #D8D2BE; border-radius: 12px; padding: 20px 20px 8px;">
+    <div class="display" style="font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #1B4332;">Round history</div>
+    <div id="empty-state" style="font-size: 13px; color: #6B6A5E; padding: 16px 0 20px;">No rounds logged yet. Your first entry will start the history below.</div>
+    <table id="history-table" style="display: none;">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Course</th>
+          <th>Holes</th>
+          <th>Score</th>
+          <th>Diff.</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+
+  <div style="font-size: 12px; color: #8A8878; margin-top: 14px; line-height: 1.6; padding: 0 4px;">
+    Par is assumed as 72 for 18 holes and 36 for 9 holes. Your index starts at 54.0 and, once you've logged three rounds, becomes 0.96 times the average of your best differentials (more rounds logged means more of your best scores count, up to your best 8 of your last 20). This is a simplified estimate, not an official USGA/WHS handicap.
+  </div>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'golf-rounds';
+  let rounds = [];
+
+  const courseInput = document.getElementById('course-input');
+  const holesInput = document.getElementById('holes-input');
+  const scoreInput = document.getElementById('score-input');
+  const submitBtn = document.getElementById('submit-btn');
+  const formError = document.getElementById('form-error');
+  const hcpValue = document.getElementById('hcp-value');
+  const hcpStatus = document.getElementById('hcp-status');
+  const emptyState = document.getElementById('empty-state');
+  const historyTable = document.getElementById('history-table');
+  const historyBody = document.getElementById('history-body');
+
+  function parFor(holes) {
+    return holes === 9 ? 36 : 72;
+  }
+
+  function differentialFor(score, holes) {
+    const par = parFor(holes);
+    return holes === 9 ? (score - par) * 2 : (score - par);
+  }
+
+  function bestCountFor(n) {
+    if (n < 3) return 0;
+    if (n <= 4) return 1;
+    if (n <= 6) return 2;
+    if (n <= 8) return 3;
+    if (n <= 11) return 4;
+    if (n <= 14) return 5;
+    if (n <= 16) return 6;
+    if (n <= 18) return 7;
+    return 8;
+  }
+
+  function computeHandicap(list) {
+    if (list.length === 0) return 54.0;
+    const recent = list.slice(-20);
+    const count = bestCountFor(recent.length);
+    if (count === 0) return 54.0;
+    const diffs = recent.map(r => r.differential).sort((a, b) => a - b);
+    const best = diffs.slice(0, count);
+    const avg = best.reduce((a, b) => a + b, 0) / best.length;
+    const idx = avg * 0.96;
+    return Math.max(0, Math.min(54, Math.round(idx * 10) / 10));
+  }
+
+  function statusText(list) {
+    const n = list.length;
+    if (n === 0) return "Starting index is 54.0. Log a few rounds and it'll start moving.";
+    if (n < 3) return `${n} round${n === 1 ? '' : 's'} logged. Index moves once you've logged 3.`;
+    const count = bestCountFor(Math.min(n, 20));
+    return `Based on your best ${count} of your last ${Math.min(n, 20)} round${Math.min(n,20) === 1 ? '' : 's'}.`;
+  }
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function render() {
+    const sorted = [...rounds].sort((a, b) => new Date(b.date) - new Date(a.date));
+    hcpValue.textContent = computeHandicap(rounds).toFixed(1);
+    hcpStatus.textContent = statusText(rounds);
+
+    if (sorted.length === 0) {
+      emptyState.style.display = 'block';
+      historyTable.style.display = 'none';
+      return;
+    }
+    emptyState.style.display = 'none';
+    historyTable.style.display = 'table';
+    historyBody.innerHTML = '';
+    sorted.forEach(r => {
+      const tr = document.createElement('tr');
+      const diffLabel = r.differential > 0 ? '+' + r.differential : String(r.differential);
+      tr.innerHTML = `
+        <td class="ledger">${fmtDate(r.date)}</td>
+        <td>${escapeHtml(r.course)}</td>
+        <td class="ledger">${r.holes}</td>
+        <td class="ledger">${r.score}</td>
+        <td class="ledger">${diffLabel}</td>
+        <td style="text-align: right;"><button class="row-del" data-id="${r.id}">remove</button></td>
+      `;
+      historyBody.appendChild(tr);
+    });
+    historyBody.querySelectorAll('.row-del').forEach(btn => {
+      btn.addEventListener('click', () => deleteRound(btn.getAttribute('data-id')));
+    });
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  async function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rounds));
+    } catch (e) {
+      console.error('Storage save failed', e);
+    }
+  }
+
+  async function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        rounds = JSON.parse(raw);
+      }
+    } catch (e) {
+      rounds = [];
+    }
+    render();
+  }
+
+  async function deleteRound(id) {
+    rounds = rounds.filter(r => r.id !== id);
+    render();
+    await save();
+  }
+
+  async function addRound() {
+    formError.style.display = 'none';
+    const course = courseInput.value.trim();
+    const holes = parseInt(holesInput.value, 10);
+    const score = parseInt(scoreInput.value, 10);
+
+    if (!course) {
+      formError.textContent = 'Enter the course you played.';
+      formError.style.display = 'block';
+      return;
+    }
+    if (!score || score < 18 || score > 200) {
+      formError.textContent = 'Enter a valid score.';
+      formError.style.display = 'block';
+      return;
+    }
+
+    const round = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: new Date().toISOString(),
+      course: course,
+      holes: holes,
+      score: score,
+      differential: Math.round(differentialFor(score, holes) * 10) / 10
+    };
+
+    submitBtn.disabled = true;
+    rounds.push(round);
+    render();
+    await save();
+    submitBtn.disabled = false;
+
+    courseInput.value = '';
+    scoreInput.value = '';
+    courseInput.focus();
+  }
+
+  submitBtn.addEventListener('click', addRound);
+  scoreInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addRound(); });
+  courseInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addRound(); });
+
+  load();
+})();
+</script>
+
+</body>
+</html>
